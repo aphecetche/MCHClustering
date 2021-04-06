@@ -328,7 +328,7 @@ class PreCluster:
       dumpInt32( dumpFiles, 0, nbrOfRecoClusters, chamberId);
       dumpInt32( dumpFiles, 0, nbrOfRecoClusters, detElemId); 
   """
-  def __init__(self, fileName="RecoDataDump.dat"):
+  def __init__(self, fileName="../Data/RecoDataDump.dat"):
     self.fileName = fileName
     self.file = 0
     self.file = open(fileName, 'rb')

@@ -9,23 +9,10 @@ from ctypes import c_int
 from ctypes import cdll
 from ctypes.util import find_library
 
-pcWrap = 0
 
 def setupPyCWrapper():
-  # Tests, unused here
-  # print( find_library("c") )
-  # print( find_library("g") )
-  # 
-  # load the library, using numpy mechanisms
-  # libc = cdll.LoadLibrary("/usr/local/lib/libgslcblas.so")
-  # print(libc)
-  #
-  # extCLib = np_ct.load_library("libgslcblas.so","/usr/local/lib")   
-  # extCLib = np_ct.load_library("libgsl.so","/usr/local/lib") 
-  extCLib = np_ct.load_library("../C/libExternalC.so", ".")
+  extCLib = np_ct.load_library("/Users/laurent/github.com/grasseau/MCHClustering/build/libExternalC.dylib", ".")
 
-  # input type for the cos_doubles function
-  # must be a double array, with single dimension that is contiguous
   array_1d_double = np_ct.ndpointer(dtype=np.double, ndim=1, flags='CONTIGUOUS')
   array_1d_int    = np_ct.ndpointer(dtype=np.int32,  ndim=1, flags='CONTIGUOUS')
   array_1d_short  = np_ct.ndpointer(dtype=np.int16,  ndim=1, flags='CONTIGUOUS')
@@ -34,6 +21,8 @@ def setupPyCWrapper():
   #
   extCLib.initMathieson.restype  = None
   extCLib.initMathieson.argtypes = None
+
+  extCLib.initMathieson()
   #
   extCLib.compute2DPadIntegrals.resType = None
   extCLib.compute2DPadIntegrals.argtypes = [ array_1d_double,
@@ -178,23 +167,20 @@ def setupPyCWrapper():
   extCLib.freeMemoryPadProcessing.resType = c_int
   extCLib.freeMemoryPadProcessing.argtypes = None
   #
-  global CLib
-  CLib = extCLib
-  #
   return extCLib
 
 def compute2DPadIntegrals( xyInfSup, chId ):
   
   N = int( xyInfSup.size / 4)
   z = np.zeros( (N), dtype=np.float64 )
-  CLib.compute2DPadIntegrals( xyInfSup, N, chId, z)
+  _lib.compute2DPadIntegrals( xyInfSup, N, chId, z)
   return z
 
 def compute2DMathiesonMixturePadIntegrals( xyInfSup, theta, chamberId ):
   N = int( xyInfSup.size / 4)
   K = int( theta.size / 5)
   integrals = np.zeros( (N) )
-  CLib.compute2DMathiesonMixturePadIntegrals( xyInfSup, theta, N, K, chamberId, integrals )
+  _lib.compute2DMathiesonMixturePadIntegrals( xyInfSup, theta, N, K, chamberId, integrals )
   return integrals
 
 def fitMathieson( thetai, xyAndDxy, cath, z, chId, verbose=0, doJacobian=0, doKhi=0, doStdErr=0):
@@ -207,7 +193,7 @@ def fitMathieson( thetai, xyAndDxy, cath, z, chId, verbose=0, doJacobian=0, doKh
   thetaf = np.zeros( (5*K) )
   khi2 = np.zeros( (1) )
   pError = np.zeros( (3*K * 3*K) )
-  CLib.fitMathieson( thetai, xyAndDxy, z, cath, zCathTotalCharge, K, N,
+  _lib.fitMathieson( thetai, xyAndDxy, z, cath, zCathTotalCharge, K, N,
                          chId, doProcess, 
                          thetaf, khi2, pError 
                       )
@@ -217,31 +203,31 @@ def computeDiscretizedGaussian2D( xyInfSup, theta, K, N, k):
   N = int( xyInfSup.size / 4)
   K = int( theta.size / 5)
   z = np.zeros( (N) )
-  Clib.computeDiscretizedGaussian2D( xyInfSup, theta, K, N, k, z)
+  extClib.computeDiscretizedGaussian2D( xyInfSup, theta, K, N, k, z)
   return z
 
 def generateMixedGaussians2D( xyInfSup, theta): 
   N = int( xyInfSup.size / 4)
   K = int( theta.size / 5)
   z = np.zeros( (N) )
-  CLib.generateMixedGaussians2D( xyInfSup, theta, K, N, z)
+  _lib.generateMixedGaussians2D( xyInfSup, theta, K, N, z)
   return z
 
 def weightedEMLoop( xyDxy, zObs, thetai, mode, LConvergence, verbose):
   N = int( xyDxy.size / 4)
   K = int( thetai.size / 5)
   thetaf = np.zeros( K*5 )
-  CLib.weightedEMLoop( xyDxy, zObs, thetai, K, N, mode, LConvergence, verbose, thetaf )
+  _lib.weightedEMLoop( xyDxy, zObs, thetai, K, N, mode, LConvergence, verbose, thetaf )
   return thetaf
 
 def copyProjectedPads( ):
   #
-  nbrOfProjPads = CLib.getNbrProjectedPads()
+  nbrOfProjPads = _lib.getNbrProjectedPads()
   xyDxyProj = np.zeros( (4*nbrOfProjPads), dtype=np.float64 )
   chA = np.zeros( nbrOfProjPads, dtype=np.float64 )
   chB = np.zeros( nbrOfProjPads, dtype=np.float64 )
   #
-  CLib.copyProjectedPads( xyDxyProj, chA, chB )
+  _lib.copyProjectedPads( xyDxyProj, chA, chB )
   npj = nbrOfProjPads
   xProj = np.zeros(npj)
   yProj = np.zeros(npj)
@@ -268,7 +254,7 @@ def projectChargeOnOnePlane( x0, dx0, y0, dy0, x1, dx1, y1, dy1, ch0, ch1):
   xy1InfSup[2*N1:3*N1] = x1 + dx1
   xy1InfSup[3*N1:4*N1] = y1 + dy1
   includeAlonePads = 1
-  CLib.projectChargeOnOnePlane( xy0InfSup, ch0, xy1InfSup, ch1, N0, N1, includeAlonePads)
+  _lib.projectChargeOnOnePlane( xy0InfSup, ch0, xy1InfSup, ch1, N0, N1, includeAlonePads)
   #
   # Get results
   #
@@ -278,9 +264,9 @@ def projectChargeOnOnePlane( x0, dx0, y0, dy0, x1, dx1, y1, dy1, ch0, ch1):
   return proj
 
 def getConnectedComponentsOfProjPads():
-  nbrOfProjPads = CLib.getNbrProjectedPads()
+  nbrOfProjPads = _lib.getNbrProjectedPads()
   padGrp = np.zeros( (nbrOfProjPads), dtype=np.int16 )
-  nbrGroups = CLib.getConnectedComponentsOfProjPads( padGrp )
+  nbrGroups = _lib.getConnectedComponentsOfProjPads( padGrp )
   return nbrGroups, padGrp
 
 def findLocalMaxWithLaplacian( xyDxy, z, laplacian=None):
@@ -288,7 +274,7 @@ def findLocalMaxWithLaplacian( xyDxy, z, laplacian=None):
   if laplacian is None:
     laplacian = np.zeros(N)
   theta0 = np.zeros(5*N)
-  K = CLib.findLocalMaxWithLaplacian( xyDxy, z, N, N, laplacian, theta0)
+  K = _lib.findLocalMaxWithLaplacian( xyDxy, z, N, N, laplacian, theta0)
   theta = np.zeros(5*K)
   theta[0*K:1*K] = theta0[0*N:0*N+K]
   theta[1*K:2*K] = theta0[1*N:1*N+K]
@@ -300,38 +286,40 @@ def findLocalMaxWithLaplacian( xyDxy, z, laplacian=None):
 def assignCathPadsToGroup( padGroup, nGroup, nCath0, nCath1 ):
   nPads = padGroup.size
   wellSplitGroup = np.zeros( nGroup, dtype=np.int16 )
-  CLib.assignCathPadsToGroup( padGroup, nPads, nGroup, nCath0, nCath1, wellSplitGroup )
+  _lib.assignCathPadsToGroup( padGroup, nPads, nGroup, nCath0, nCath1, wellSplitGroup )
   return wellSplitGroup
 
 def copyCathToGrp( nCath0, nCath1):
   cath0Grp = np.zeros( nCath0, dtype=np.int16)
   cath1Grp = np.zeros( nCath1, dtype=np.int16)
-  CLib.copyCathToGrp( cath0Grp, cath1Grp, nCath0, nCath1)
+  _lib.copyCathToGrp( cath0Grp, cath1Grp, nCath0, nCath1)
   return (cath0Grp, cath1Grp)
 
 def clusterProcess( xyDxyi, cathi, saturated, zi, chId ):
   N = int( xyDxyi.size / 4)
-  nbrOfHits = CLib.clusterProcess( xyDxyi, cathi, saturated, zi, chId, N)
+  nbrOfHits = _lib.clusterProcess( xyDxyi, cathi, saturated, zi, chId, N)
   return nbrOfHits
 
 def setMathiesonVarianceApprox( chId, theta):
   K = int( theta.size / 5)
-  CLib.setMathiesonVarianceApprox(chId, theta, K)
+  _lib.setMathiesonVarianceApprox(chId, theta, K)
 
 def collectTheta( K ):
   theta = np.zeros( K*5)
   thetaInGrp = np.zeros( K, dtype=np.int16)
-  CLib.collectTheta( theta, thetaInGrp, K)
+  _lib.collectTheta( theta, thetaInGrp, K)
   return (theta, thetaInGrp)
 
 def collectPadsAndCharges():
-  N = CLib.getNbrOfPadsInGroups()
+  N = _lib.getNbrOfPadsInGroups()
   xyDxy = np.zeros( N*4)
   z     = np.zeros( N)
   padToGrp = np.zeros( N, dtype=np.int16)
-  CLib.collectPadsAndCharges( xyDxy, z, padToGrp, N)
+  _lib.collectPadsAndCharges( xyDxy, z, padToGrp, N)
   return ( xyDxy, z, padToGrp)
 
 def freeMemoryPadProcessing():
-  CLib.freeMemoryPadProcessing
+  _lib.freeMemoryPadProcessing
   return
+
+_lib = setupPyCWrapper()

@@ -147,7 +147,7 @@ if __name__ == "__main__":
   pcWrap.initMathieson()
   
   # Read MC data
-  mcData = IO.MCData(fileName="MCDataDump.dat")
+  mcData = IO.MCData(fileName="../Data/MCDataDump.dat")
   mcData.read()
   # Read PreClusters
   recoData = IO.PreCluster()
